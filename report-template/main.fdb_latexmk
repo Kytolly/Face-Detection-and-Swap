@@ -1,7 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1748135985 "d:/Desktop/myfile/draft/proj4：Scene Recognition with Bag of Words (no data)/report-template/main.tex" "main.pdf" "main" 1748135987 2
+["pdflatex"] 1748161082 "d:/Desktop/myfile/draft/Face-Detection-and-Swap/report-template/main.tex" "main.pdf" "main" 1748161084 2
   "c:/Windows/Fonts/msyh.ttc" 1737527732 19704352 1e10e74402e59d54499af795caf0b135 ""
-  "d:/Desktop/myfile/draft/proj4：Scene Recognition with Bag of Words (no data)/report-template/main.tex" 1748135857 1660 f713b9fe9368952dc1b1d88abab70dcc ""
+  "d:/Desktop/myfile/draft/Face-Detection-and-Swap/report-template/main.tex" 1748159748 1404 3b3d1a900945df44825df48b5565d440 ""
   "d:/LaTeX/texlive2023/texlive/2023/texmf-dist/fonts/map/fontname/texfonts.map" 1710493465 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "d:/LaTeX/texlive2023/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmr10.tfm" 1710492975 1296 45809c5a464d5f32c8f98ba97c1bb47f ""
   "d:/LaTeX/texlive2023/texlive/2023/texmf-dist/fonts/tfm/public/cm/cmr9.tfm" 1710492975 1292 6b21b9c2c7bebb38aa2273f7ca0fb3af ""
@@ -82,9 +82,9 @@
   "d:/LaTeX/texlive2023/texlive/2023/texmf-dist/web2c/texmf.cnf" 1710492560 40745 87bb86a62d462f93a1efc6b0c65c872e ""
   "d:/LaTeX/texlive2023/texlive/2023/texmf-var/web2c/pdftex/pdflatex.fmt" 1710495787 7883699 4ec761d2456ca0b6ca1850f75c68073d ""
   "d:/LaTeX/texlive2023/texlive/2023/texmf.cnf" 1710495610 713 e69b156964470283e0530f5060668171 ""
-  "macros.tex" 1747963278 12779 5b8c977e85c55ce49c8b87f902b2bde4 ""
-  "main.aux" 1748135985 34 3985256e7290058c681f74d7a3565a19 "pdflatex"
-  "main.tex" 1748135857 1660 f713b9fe9368952dc1b1d88abab70dcc ""
+  "macros.tex" 1748161078 12787 0fa29e418eade95f9fe8741459e059b5 ""
+  "main.aux" 1748161082 34 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "main.tex" 1748159748 1404 3b3d1a900945df44825df48b5565d440 ""
   (generated)
   "main.aux"
   "main.log"
