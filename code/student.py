@@ -1,0 +1,215 @@
+import cv2
+import numpy as np
+import dlib
+from PIL import Image 
+import matplotlib.pyplot as plt
+
+image1 = Image.open('../data/person1.jpg')
+image1 = image1.resize((300,300))
+
+image2 = Image.open('../data/person2.jpg')
+image2 = image2.resize((300,300))
+
+# Converting image to array and converting them to grayscale
+img1 = np.array(image1)
+img1_gray = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+img2 = np.array(image2)
+img2_gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+# Initalizing frontal face detector and shape predictor
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor("../data/pretrained_weights/shape_predictor_68_face_landmarks.dat")
+
+def visulize_face_landmarks(img, mask, landmarks, triangles):
+    plt.figure(figsize=(100, 300))
+    plt.subplot(1, 3, 1)
+    plt.imshow(img)
+    plt.axis('off')
+    
+    plt.subplot(1, 3, 2)
+    face = cv2.bitwise_and(img, img, mask=mask)
+    plt.imshow(face)
+    plt.axis('off')
+    
+    plt.subplot(1, 3, 3)
+    img_landmark = img.copy()
+    
+    for triangle in triangles:
+        cv2.polylines(img_landmark, [np.array(triangle, np.int32).reshape((-1, 1 ,2))], True, (255, 255, 255), 1)
+    for i, landmark_point in enumerate(landmarks):
+        x, y = landmark_point[0, 0], landmark_point[0, 1]
+        cv2.circle(img_landmark, (x, y), 3, (0, 255, 0), -1)
+
+    
+    plt.imshow(img_landmark)
+    plt.axis('off')
+    
+    plt.show()
+    
+class TooManyFaces(Exception):
+    pass
+
+class NoFaces(Exception):
+    pass
+
+def get_landmarks(detector, predictor, img):
+    faces = detector(img, 1)
+    
+    if len(faces) > 1:
+        raise TooManyFaces
+    if len(faces) == 0:
+        raise NoFaces
+    
+    landmarks = np.matrix([[p.x, p.y] for p in predictor(img, faces[0]).parts()])
+    return landmarks
+
+def get_face_mask(img, landmarks):
+    convexhull = cv2.convexHull(landmarks)
+    mask = np.zeros(img.shape, dtype=img.dtype)
+    cv2.fillConvexPoly(mask, convexhull, (255, 255, 255))
+    
+    return convexhull, mask
+
+def get_delaunay_triangulation(landmarks, convexhull):
+    rect = cv2.boundingRect(convexhull)
+    subdiv = cv2.Subdiv2D(rect)
+
+    # Insert points into the subdivision
+    for p in landmarks:
+        # Need to insert as integer tuples
+        subdiv.insert((int(p[0,0]), int(p[0,1])))
+
+    triangles = []
+    # Get triangle list from the subdivision
+    triangleList = subdiv.getTriangleList()
+
+    # Find the indices of the points forming each triangle
+    points = [(int(p[0,0]), int(p[0,1])) for p in landmarks] # Convert landmarks to list of tuples for easier lookup
+
+    for t in triangleList:
+        pt1 = (int(t[0]), int(t[1]))
+        pt2 = (int(t[2]), int(t[3]))
+        pt3 = (int(t[4]), int(t[5]))
+
+        # Find the index of each point in the original landmarks
+        # Check if the point is within the convex hull to avoid triangles outside the face
+        if cv2.pointPolygonTest(convexhull, pt1, False) >= 0 and \
+           cv2.pointPolygonTest(convexhull, pt2, False) >= 0 and \
+           cv2.pointPolygonTest(convexhull, pt3, False) >= 0:
+
+            try:
+                idx1 = points.index(pt1)
+                idx2 = points.index(pt2)
+                idx3 = points.index(pt3)
+                triangles.append([idx1, idx2, idx3])
+            except ValueError:
+                # This might happen if the triangulation includes points not exactly matching landmarks
+                # For simplicity, we'll skip such triangles in this example
+                pass
+
+    return triangles
+
+def transformation_from_landmarks(landmarks1, landmarks2):
+    """
+    Return an affine transformation [s * R | T] such that:
+        sum ||s*R*p1,i + T - p2,i||^2
+    is minimized.
+    """
+    # Solve the procrustes problem by subtracting centroids, scaling by the
+    # standard deviation, and then using the SVD to calculate the rotation. See
+    # the following for more details:
+    #   https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
+    
+    M, _ = cv2.estimateAffinePartial2D(np.array(landmarks1), np.array(landmarks2))
+    return M
+
+def warp_img(img, M, dshape):
+    warped_img = cv2.warpAffine(img, M, (dshape[1], dshape[0]), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
+    return warped_img
+
+# Face 1
+landmarks1 = get_landmarks(detector, predictor, img1_gray)
+
+# Mask
+convexhull1, mask1 = get_face_mask(img1_gray, landmarks1)
+face1 = cv2.bitwise_and(img1, img1, mask=mask1)
+
+# Delaunay triangulation
+triangles1 = get_delaunay_triangulation(landmarks1, convexhull1)
+
+# Face 2
+landmarks2 = get_landmarks(detector, predictor, img2_gray)
+
+# Mask
+convexhull2, mask2 = get_face_mask(img2_gray, landmarks2)
+
+# Delaunay triangulation
+triangles2 = get_delaunay_triangulation(landmarks2, convexhull2)
+
+visulize_face_landmarks(img1, mask1, landmarks1, triangles1)
+visulize_face_landmarks(img2, mask2, landmarks2, triangles2)
+
+'''
+img2: target img (person2)
+warped_img1: warped face img of person1
+face_mask1: warped face mask of person1
+'''
+# Create an empty image for the warped face
+warped_img1 = np.zeros(img2.shape, dtype=img2.dtype)
+face_mask1 = np.zeros(img2.shape, dtype=img2.dtype)
+
+points1 = np.array(landmarks1)
+points2 = np.array(landmarks2)
+
+for i, tri_idx in enumerate(triangles1):
+    # Get points for img1 using the indices
+    pts1 = []
+    for j in range(3):
+        pts1.append(points1[tri_idx[j]]) # Use index to get the point from landmarks1
+
+    # Get points for img2 using the corresponding indices
+    pts2 = []
+    for j in range(3):
+        # Assuming triangles2 has the same structure of indices as triangles1
+        # This is a simplification, a more robust approach might be needed for complex cases
+        pts2.append(points2[tri_idx[j]]) # Use the same index to get the corresponding point from landmarks2
+
+
+    # Convert to numpy arrays
+    pts1 = np.array(pts1, dtype=np.float32)
+    pts2 = np.array(pts2, dtype=np.float32)
+
+    # Get bounding rectangles
+    r1 = cv2.boundingRect(pts1)
+    r2 = cv2.boundingRect(pts2)
+
+    # Get triangles relative to bounding rects
+    tri1Cropped = []
+    tri2Cropped = []
+
+    for j in range(0, 3):
+        tri1Cropped.append(((pts1[j][0] - r1[0]), (pts1[j][1] - r1[1])))
+        tri2Cropped.append(((pts2[j][0] - r2[0]), (pts2[j][1] - r2[1])))
+
+    # Apply affine transformation
+    img1Cropped = img1[r1[1]:r1[1] + r1[3], r1[0]:r1[0] + r1[2]]
+
+    M = cv2.getAffineTransform(np.float32(tri1Cropped), np.float32(tri2Cropped))
+    warped_triangle = cv2.warpAffine(img1Cropped, M, (r2[2], r2[3]), None, flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
+
+    # Create mask for the warped triangle
+    mask_triangle = np.zeros((r2[3], r2[2], 3), dtype=np.uint8)
+    cv2.fillConvexPoly(mask_triangle, np.int32(tri2Cropped), (255, 255, 255))
+
+    # Copy the warped triangle into the target image
+    warped_img1[r2[1]:r2[1]+r2[3], r2[0]:r2[0]+r2[2]] = warped_img1[r2[1]:r2[1]+r2[3], r2[0]:r2[0]+r2[2]] * (1 - mask_triangle / 255) + warped_triangle * (mask_triangle / 255)
+    face_mask1[r2[1]:r2[1]+r2[3], r2[0]:r2[0]+r2[2]] = face_mask1[r2[1]:r2[1]+r2[3], r2[0]:r2[0]+r2[2]] * (1 - mask_triangle / 255) + mask_triangle * (mask_triangle / 255)
+
+
+output_img = img2 * (1 - face_mask1 / 255) + warped_img1 * (face_mask1 / 255)
+plt.imshow(output_img)
+
+# Seamless cloning
+center = ((int(convexhull2.mean(axis=0)[0][0]), int(convexhull2.mean(axis=0)[0][1])))
+seamlessclone = cv2.seamlessClone(warped_img1, img2, mask2, center, cv2.NORMAL_CLONE)
+plt.imshow(seamlessclone)

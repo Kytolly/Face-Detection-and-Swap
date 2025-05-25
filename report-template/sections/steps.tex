@@ -1,5 +1,41 @@
+\subsection{手写面部识别}
+本实验基于OpenCV和Dlib库实现面部检测和换脸，主要包含以下步骤：
+
+\begin{enumerate}
+    \item \textbf{环境配置和导入} 
+	安装实验所需的库，特别是Dlib库，这通常需要预先安装Visual Studio和CMake。
+	导入必要的Python库，例如 \texttt{cv2}, \texttt{numpy}, \texttt{dlib}, \texttt{PIL}, \texttt{matplotlib.pyplot} 
+	读取事先准备用于换脸的两张人物图像，并将它们的大小统一调整为 (300, 300) 像素。
+
+    \item \textbf{面部检测和关键点定位：} 
+	利用Dlib的 \texttt{get_frontal_face_detector()} 在图像中定位人脸区域，
+	并使用预训练的 \texttt{shape_predictor} 检测出人脸的68个关键点。
+	此步骤通过实现 \texttt{get_landmarks} 函数完成，该函数负责检测人脸并返回关键点坐标。
+	同时，实现 \texttt{get_face_mask} 函数，通过计算面部关键点的凸包来生成面部遮罩，确保后续操作只在面部区域进行。
+
+    \item \textbf{面部网格化：} 
+	以检测到的面部关键点作为顶点，
+	对源图像和目标图像的面部区域进行Delaunay三角剖分，构建面部网格。
+	此步骤通过实现 \texttt{get_delaunay_triangulation} 函数完成，它基于关键点生成面部的三角形网格。
+
+    \item \textbf{面部对齐：} 
+	根据源图像和目标图像的关键点，计算仿射变换矩阵，对源图像的面部进行对齐。
+	这通过实现 \texttt{transformation_from_landmarks} 函数完成，
+	该函数计算一个部分仿射变换矩阵，将源面部关键点映射到目标面部关键点。
+
+    \item \textbf{变形：} 
+	对齐后的源面部图像根据目标面部的网格进行仿射变形，使其形状与目标面部更匹配。
+	这通过实现 \texttt{warp_img} 函数完成，该函数使用仿射变换矩阵对图像进行几何变换。
+    
+	\item \textbf{无缝融合：} 
+	将变形后的源面部区域融合到目标图像中。
+	首先，遍历Delaunay三角剖分得到的每个三角形，对源图像中的对应三角形区域进行仿射变换，将其扭曲到目标图像中相应三角形的位置。
+	然后，使用OpenCV的 \texttt{cv2.seamlessClone} 函数，将扭曲后的面部区域无缝地融合到目标图像中，完成换脸。
+	\texttt{seamlessClone} 通过泊松图像编辑技术，确保融合区域的梯度平滑过渡，避免明显的接缝。
+\end{enumerate}
+
 \subsection{试用大模型demo换脸技术}
-\begin{enumuate}
+\begin{enumerate}
 	\item 登录网站https://modelscope.cn/studios/Hardwell/hardwell_face_fusion_light_release；
 	\item 上传想要的两张图片并保存输出图像
-\end{enumuate}
+\end{enumerate}
